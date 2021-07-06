@@ -13,7 +13,10 @@
   "environment": "*",
   "entrypoints": {
     "main": [
-      "me.dogeon.dogemoji.Main"
+      "me.dogeon.dogemoji.Dogemoji"
+    ],
+    "client": [
+      "me.dogeon.dogemoji.DogemojiClient"
     ]
   },
   "mixins": [
