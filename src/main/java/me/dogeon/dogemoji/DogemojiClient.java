@@ -1,5 +1,6 @@
 package me.dogeon.dogemoji;
 
+import me.dogeon.dogemoji.emoji.EmojiStorage;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
 import net.fabricmc.fabric.api.resource.SimpleSynchronousResourceReloadListener;
@@ -18,15 +19,20 @@ public class DogemojiClient implements ClientModInitializer {
 
                 @Override
                 public void reload(ResourceManager manager) {
+                    Log.LOGGER.info("Loading emoji resources...");
                     storage.beginUpdate();
-                    for (Identifier id : manager.findResources("emojis", p -> p.endsWith(".json")))
+                    for (Identifier id : manager.findResources("emojis", p -> p.endsWith(".json"))) {
                         storage.load(manager, id);
+                    }
                     storage.endUpdate();
-                    Dogemoji.LOGGER.info(storage.query("s"));
+                    Log.LOGGER.info("Emoji resources loaded.");
+                    Log.LOGGER.info(storage.query("s"));
                 }
 
                 @Override
-                public Identifier getFabricId() { return new Identifier(Dogemoji.MOD_ID, "emojis"); }
+                public Identifier getFabricId() {
+                    return new Identifier(Reference.MOD_ID, "emojis");
+                }
             });
     }
 }

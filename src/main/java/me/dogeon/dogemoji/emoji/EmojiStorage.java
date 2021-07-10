@@ -1,8 +1,10 @@
-package me.dogeon.dogemoji;
+package me.dogeon.dogemoji.emoji;
 
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
+import me.dogeon.dogemoji.Log;
 import net.minecraft.resource.ResourceManager;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.InvalidIdentifierException;
@@ -14,6 +16,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 public class EmojiStorage {
+
+    private static JsonElement getFieldIfExists(JsonObject json, String field) throws EmojiParsingError {
+        if (!json.has(field)) throw new EmojiParsingError("field \"" + field + "\" doesn't exist");
+        return json.get(field);
+    }
+
     static final class EmojiEntry {
         enum EmojiEntryType { IMAGE, TEXT }
         public EmojiEntryType type;
@@ -21,33 +29,32 @@ public class EmojiStorage {
         public String text;
 
         EmojiEntry(JsonObject json) throws EmojiParsingError {
-            if (!json.has("type")) throw new EmojiParsingError("field \"emoji.type\" not found");
-            switch (json.get("type").getAsString()) {
+            switch (getFieldIfExists(json, "type").getAsString()) {
                 case "image" -> {
-                    if (!json.has("texture"))
-                        throw new EmojiParsingError("field \"emoji.texture\" not found");
+                    this.textureId = new Identifier(getFieldIfExists(json, "texture").getAsString());
                     this.type = EmojiEntryType.IMAGE;
-                    this.textureId = new Identifier(json.get("texture").getAsString());
                 }
                 case "text" -> {
-                    if (!json.has("text"))
-                        throw new EmojiParsingError("field \"emoji.text\" not found");
+                    this.text = getFieldIfExists(json, "text").getAsString();
                     this.type = EmojiEntryType.TEXT;
-                    this.text = json.get("text").getAsString();
                 }
-                default -> throw new EmojiParsingError("Unknown emoji type " + json.get("type").getAsString());
+                default -> throw new EmojiParsingError("unknown emoji type: " + json.get("type").getAsString());
             }
         }
 
         @Override
-        public String toString() { return (type == EmojiEntryType.IMAGE) ? textureId.toString() : text; }
+        public String toString() {
+            return (type == EmojiEntryType.IMAGE) ? textureId.toString() : text;
+        }
     }
 
     public PatriciaTrie<EmojiEntry> trie;
     public PatriciaTrie<EmojiEntry> tmpTrie;
     private static final JsonParser parser = new JsonParser();
 
-    public EmojiStorage() { trie = new PatriciaTrie<>(); }
+    public EmojiStorage() {
+        trie = new PatriciaTrie<>();
+    }
 
     public void beginUpdate() {
         assert tmpTrie == null;
@@ -57,17 +64,13 @@ public class EmojiStorage {
     public void load(ResourceManager manager, Identifier resourceId) {
         try (InputStream stream = manager.getResource(resourceId).getInputStream()) {
             JsonObject rawEmoji = (JsonObject) parser.parse(new InputStreamReader(stream, StandardCharsets.UTF_8));
-            if (!rawEmoji.has("name")) throw new EmojiParsingError("field \"name\" not found");
-            if (!rawEmoji.has("emoji")) throw new EmojiParsingError("field \"emoji\" not found");
-            String name = rawEmoji.get("name").getAsString();
-            EmojiEntry emojiEntry = new EmojiEntry((JsonObject) rawEmoji.get("emoji"));
+            String name = getFieldIfExists(rawEmoji, "name").getAsString();
+            EmojiEntry emojiEntry = new EmojiEntry((JsonObject) getFieldIfExists(rawEmoji, "emoji"));
             tmpTrie.put(name, emojiEntry);
-        } catch (EmojiParsingError e) {
-            Dogemoji.LOGGER.error("Invalid emoji resource {}: {}", resourceId, e.getMessage());
-        } catch (JsonSyntaxException | InvalidIdentifierException e) {
-            Dogemoji.LOGGER.error("Error while parsing emoji resource {}: {}", resourceId, e.getMessage());
+        } catch (EmojiParsingError | InvalidIdentifierException | JsonSyntaxException e) {
+            Log.LOGGER.error("Invalid emoji resource {}: {}", resourceId, e.getMessage());
         } catch (Exception e) {
-            Dogemoji.LOGGER.error("Unknown error occurred while loading emoji resource " + resourceId, e);
+            Log.LOGGER.error("Unknown error occurred while loading emoji resource " + resourceId, e);
         }
     }
 
@@ -83,6 +86,8 @@ public class EmojiStorage {
     }
 
     static class EmojiParsingError extends Exception {
-        EmojiParsingError(String msg) { super(msg); }
+        EmojiParsingError(String msg) {
+            super(msg);
+        }
     }
 }
