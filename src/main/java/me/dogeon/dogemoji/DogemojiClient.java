@@ -9,7 +9,7 @@ import net.minecraft.resource.ResourceType;
 import net.minecraft.util.Identifier;
 
 public class DogemojiClient implements ClientModInitializer {
-    EmojiStorage storage;
+    public static EmojiStorage storage;
 
     @Override
     public void onInitializeClient() {
@@ -26,7 +26,6 @@ public class DogemojiClient implements ClientModInitializer {
                     }
                     storage.endUpdate();
                     Log.LOGGER.info("Emoji resources loaded.");
-                    Log.LOGGER.info(storage.query("s"));
                 }
 
                 @Override

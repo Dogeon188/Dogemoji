@@ -13,7 +13,7 @@ import org.apache.commons.collections4.trie.PatriciaTrie;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.util.Map;
+import java.util.*;
 
 public class EmojiStorage {
 
@@ -22,7 +22,7 @@ public class EmojiStorage {
         return json.get(field);
     }
 
-    static final class EmojiEntry {
+    public static final class EmojiEntry {
         enum EmojiEntryType { IMAGE, TEXT }
         public EmojiEntryType type;
         public Identifier textureId;
@@ -49,7 +49,7 @@ public class EmojiStorage {
     }
 
     public PatriciaTrie<EmojiEntry> trie;
-    public PatriciaTrie<EmojiEntry> tmpTrie;
+    public Map<String, List<EmojiEntry>> tmpTrie;
     private static final JsonParser parser = new JsonParser();
 
     public EmojiStorage() {
@@ -58,7 +58,12 @@ public class EmojiStorage {
 
     public void beginUpdate() {
         assert tmpTrie == null;
-        tmpTrie = new PatriciaTrie<>();
+        tmpTrie = new HashMap<>();
+    }
+
+    private void put(String name, EmojiEntry emojiEntry) {
+        if (!tmpTrie.containsKey(name)) tmpTrie.put(name, new LinkedList<>());
+        tmpTrie.get(name).add(emojiEntry);
     }
 
     public void load(ResourceManager manager, Identifier resourceId) {
@@ -66,7 +71,7 @@ public class EmojiStorage {
             JsonObject rawEmoji = (JsonObject) parser.parse(new InputStreamReader(stream, StandardCharsets.UTF_8));
             String name = getFieldIfExists(rawEmoji, "name").getAsString();
             EmojiEntry emojiEntry = new EmojiEntry((JsonObject) getFieldIfExists(rawEmoji, "emoji"));
-            tmpTrie.put(name, emojiEntry);
+            put(name, emojiEntry);
         } catch (EmojiParsingError | InvalidIdentifierException | JsonSyntaxException e) {
             Log.LOGGER.error("Invalid emoji resource {}: {}", resourceId, e.getMessage());
         } catch (Exception e) {
@@ -76,7 +81,15 @@ public class EmojiStorage {
 
     public void endUpdate() {
         assert tmpTrie != null;
-        trie = tmpTrie;
+        trie = new PatriciaTrie<>();
+        for (final Map.Entry<String, List<EmojiEntry>> entry : tmpTrie.entrySet()) {
+            List<EmojiEntry> emojis = entry.getValue();
+            int i = 0;
+            for (EmojiEntry emoji : emojis) {
+                trie.put(entry.getKey() + (i == 0 ? "" : "_" + i), emoji);
+                i++;
+            }
+        }
         tmpTrie = null;
     }
 
